@@ -1,0 +1,25 @@
+[project]
+name = "merlin-epu-sim"
+version = "0.1.0"
+description = "Simulations of the MERLIN QP EPU using Radia and SRW"
+authors = [{ name = "Kimoon Higashihira Han", email = "khan@kaist.ac.kr" }]
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "erlab>=3.23.2",
+    "ipykernel>=7.1.0",
+    "ipywidgets>=8.1.8",
+    "joblib>=1.5.3",
+    "matplotlib>=3.10.9",
+    "mpi4py>=4.1.2",
+    "numpy>=2.3.5",
+    "pyqt6>=6.11.0",
+    "radia",
+    "scipy>=1.17.1",
+    "srwpy",
+    "xarray>=2026.4.0",
+]
+
+[tool.uv.sources]
+radia = { git = "https://github.com/kmnhan/Radia.git", subdirectory = "cpp/py" }
+srwpy = { git = "https://github.com/kmnhan/SRW.git", subdirectory = "env/python" }
