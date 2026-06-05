@@ -107,7 +107,7 @@ def srw_hdf5_output_to_xarray(ar_int, mesh, meta, *, drop_single_stokes=True):
             attrs=attrs,
         )
     else:
-        stokes_labels = [f"S{i}" for i in range(n_stokes)]
+        stokes_labels = np.arange(n_stokes, dtype=np.int64)
 
         da = xr.DataArray(
             arr,

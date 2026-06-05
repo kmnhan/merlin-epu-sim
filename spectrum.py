@@ -27,7 +27,7 @@ def calculate_spectrum_multi_mpi(
     *,
     n_processes: int = 8,
     mpi_executable: str | pathlib.Path = "mpirun",
-    overwrite: bool = False,
+    overwrite: bool = True,
     return_xarray: bool = True,
     **spectrum_kwargs,
 ):
