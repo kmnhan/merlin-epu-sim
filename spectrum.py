@@ -29,17 +29,21 @@ def calculate_spectrum_multi_mpi(
     mpi_executable: str | pathlib.Path = "mpirun",
     overwrite: bool = True,
     return_xarray: bool = True,
+    use_mpi: bool = True,
+    only_flux: bool = False,
     **spectrum_kwargs,
 ):
     """Run calculate_spectrum_multi through mpirun and block until it finishes.
 
+    Set use_mpi=False to run in-process while keeping the same output readback.
     If return_xarray=True, the HDF5 output is read back with
-    srwl_uti_read_intens_hdf5() and srw_hdf5_output_to_xarray().
+    srwl_uti_read_intens_hdf5() and srw_hdf5_output_to_xarray(), saved next to
+    the SRW output as *_xarray.h5, then returned.
     """
-    if n_processes < 1:
+    if use_mpi and n_processes < 1:
         raise ValueError("n_processes must be at least 1.")
 
-    if MPI.COMM_WORLD.Get_size() != 1:
+    if use_mpi and MPI.COMM_WORLD.Get_size() != 1:
         raise RuntimeError(
             "calculate_spectrum_multi_mpi() should be called from a normal Python "
             "process, not from inside an existing MPI worker."
@@ -48,84 +52,103 @@ def calculate_spectrum_multi_mpi(
     file_path = pathlib.Path(file_path).expanduser().resolve()
     file_path.parent.mkdir(parents=True, exist_ok=True)
     info_path = file_path.with_name(file_path.stem + "_info.json")
+    xarray_path = file_path.with_name(file_path.stem + "_xarray" + file_path.suffix)
 
     if file_path.exists() and not overwrite:
         raise FileExistsError(f"{file_path} already exists; pass overwrite=True.")
+    if return_xarray and xarray_path.exists() and not overwrite:
+        raise FileExistsError(f"{xarray_path} already exists; pass overwrite=True.")
 
     if overwrite:
         file_path.unlink(missing_ok=True)
         info_path.unlink(missing_ok=True)
+        xarray_path.unlink(missing_ok=True)
 
-    with tempfile.TemporaryDirectory(
-        prefix=f"{file_path.stem}_mpi_", dir=file_path.parent
-    ) as tmp_dir:
-        tmp_dir = pathlib.Path(tmp_dir)
-        field_path = tmp_dir / "field.dat"
-        config_path = tmp_dir / "config.json"
+    spectrum_kwargs = dict(spectrum_kwargs)
+    spectrum_kwargs.pop("field_container", None)
+    spectrum_kwargs.pop("file_path", None)
+    spectrum_kwargs.pop("use_mpi", None)
+    spectrum_kwargs["only_flux"] = only_flux
 
-        if len(field_container.arMagFld) != 1:
-            raise NotImplementedError(
-                "calculate_spectrum_multi_mpi() supports one SRW 3D field."
+    if use_mpi:
+        with tempfile.TemporaryDirectory(
+            prefix=f"{file_path.stem}_mpi_", dir=file_path.parent
+        ) as tmp_dir:
+            tmp_dir = pathlib.Path(tmp_dir)
+            field_path = tmp_dir / "field.dat"
+            config_path = tmp_dir / "config.json"
+
+            if len(field_container.arMagFld) != 1:
+                raise NotImplementedError(
+                    "calculate_spectrum_multi_mpi() supports one SRW 3D field."
+                )
+
+            field = field_container.arMagFld[0]
+            field.save_ascii(
+                str(field_path),
+                _xc=float(field_container.arXc[0])
+                if len(field_container.arXc)
+                else 0.0,
+                _yc=float(field_container.arYc[0])
+                if len(field_container.arYc)
+                else 0.0,
+                _zc=float(field_container.arZc[0])
+                if len(field_container.arZc)
+                else 0.0,
             )
 
-        field = field_container.arMagFld[0]
-        field.save_ascii(
-            str(field_path),
-            _xc=float(field_container.arXc[0]) if len(field_container.arXc) else 0.0,
-            _yc=float(field_container.arYc[0]) if len(field_container.arYc) else 0.0,
-            _zc=float(field_container.arZc[0]) if len(field_container.arZc) else 0.0,
-        )
+            config = {
+                "field_path": str(field_path),
+                "file_path": str(file_path),
+                "spectrum_kwargs": spectrum_kwargs,
+            }
+            with config_path.open("w") as f:
+                json.dump(config, f, indent=2)
 
-        spectrum_kwargs = dict(spectrum_kwargs)
-        spectrum_kwargs.pop("field_container", None)
-        spectrum_kwargs.pop("file_path", None)
-        spectrum_kwargs.pop("use_mpi", None)
+            worker_code = "\n".join(
+                [
+                    "import json, sys",
+                    "from srwpy.srwlib import srwl_uti_read_mag_fld_3d",
+                    "from spectrum import calculate_spectrum_multi",
+                    "with open(sys.argv[1], 'r') as f:",
+                    "    config = json.load(f)",
+                    "field_container = srwl_uti_read_mag_fld_3d(config['field_path'])",
+                    "kwargs = dict(config.get('spectrum_kwargs', {}))",
+                    "kwargs.pop('use_mpi', None)",
+                    "calculate_spectrum_multi(",
+                    "    field_container=field_container,",
+                    "    file_path=config['file_path'],",
+                    "    use_mpi=True,",
+                    "    **kwargs,",
+                    ")",
+                ]
+            )
 
-        config = {
-            "field_path": str(field_path),
-            "file_path": str(file_path),
-            "spectrum_kwargs": spectrum_kwargs,
-        }
-        with config_path.open("w") as f:
-            json.dump(config, f, indent=2)
-
-        worker_code = "\n".join(
-            [
-                "import json, sys",
-                "from srwpy.srwlib import srwl_uti_read_mag_fld_3d",
-                "from spectrum import calculate_spectrum_multi",
-                "with open(sys.argv[1], 'r') as f:",
-                "    config = json.load(f)",
-                "field_container = srwl_uti_read_mag_fld_3d(config['field_path'])",
-                "kwargs = dict(config.get('spectrum_kwargs', {}))",
-                "kwargs.pop('use_mpi', None)",
-                "calculate_spectrum_multi(",
-                "    field_container=field_container,",
-                "    file_path=config['file_path'],",
-                "    use_mpi=True,",
-                "    **kwargs,",
-                ")",
+            command = [
+                str(mpi_executable),
+                "-np",
+                str(n_processes),
+                sys.executable,
+                "-c",
+                worker_code,
+                str(config_path),
             ]
-        )
 
-        command = [
-            str(mpi_executable),
-            "-np",
-            str(n_processes),
-            sys.executable,
-            "-c",
-            worker_code,
-            str(config_path),
-        ]
-
-        subprocess.run(
-            command,
-            check=True,
-            cwd=pathlib.Path(__file__).resolve().parent,
+            subprocess.run(
+                command,
+                check=True,
+                cwd=pathlib.Path(__file__).resolve().parent,
+            )
+    else:
+        calculate_spectrum_multi(
+            field_container=field_container,
+            file_path=str(file_path),
+            use_mpi=False,
+            **spectrum_kwargs,
         )
 
     if not file_path.exists():
-        raise FileNotFoundError(f"MPI spectrum calculation did not create {file_path}")
+        raise FileNotFoundError(f"Spectrum calculation did not create {file_path}")
 
     if not return_xarray:
         return file_path
@@ -138,6 +161,7 @@ def calculate_spectrum_multi_mpi(
     if info_path.is_file():
         with info_path.open("r") as f:
             data = data.assign_attrs(**json.load(f))
+    data.to_netcdf(xarray_path, engine="h5netcdf", invalid_netcdf=True)
     return data
 
 
@@ -252,6 +276,7 @@ def calculate_spectrum_multi(
     sig_y=0.023e-3,  # Vertical RMS size in m
     sig_y_pr=0.0065e-3,  # Vertical RMS divergence in rad
     use_mpi: bool = False,  # Whether to use MPI for parallelization.
+    only_flux: bool = False,  # Use SRW _char=10 instead of four Stokes components.
     extra_attrs=None,
 ):
     """Calculate a multi-electron trajectory through the given field."""
@@ -312,6 +337,7 @@ def calculate_spectrum_multi(
 
     comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
+    srw_char = 10 if only_flux else 1
 
     srwl_wfr_emit_prop_multi_e(
         _e_beam=elec_beam_me,
@@ -326,7 +352,7 @@ def calculate_spectrum_multi(
         _sr_samp_fact=-1,
         _opt_bl=None,
         _pres_ang=0,  # 0 = coordinate plane at OBSERVATION_Z_M
-        _char=1,  # Get all stokes parameters, set to 0 for intensity only
+        _char=srw_char,  # 1 = all Stokes parameters, 10 = flux
         _x0=0.0,
         _y0=0.0,
         _e_ph_integ=0,
@@ -346,6 +372,8 @@ def calculate_spectrum_multi(
                     "obs_z_m": obs_z_m,
                     "theta_x_half_mrad": theta_x_half_mrad,
                     "theta_y_half_mrad": theta_y_half_mrad,
+                    "only_flux": only_flux,
+                    "srw_char": srw_char,
                     "date": datetime.datetime.now().isoformat(),
                 },
                 f,
