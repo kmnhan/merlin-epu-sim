@@ -10,9 +10,12 @@ dependencies = [
     "ipykernel>=7.1.0",
     "ipywidgets>=8.1.8",
     "joblib>=1.5.3",
+    "jupyter-rs-radia",
+    "jupyter-rs-vtk",
     "matplotlib>=3.10.9",
     "mpi4py>=4.1.2",
     "numpy>=2.3.5",
+    "pykern>=20260512.171607",
     "pyqt6>=6.11.0",
     "radia",
     "scipy>=1.17.1",
@@ -23,3 +26,5 @@ dependencies = [
 [tool.uv.sources]
 radia = { git = "https://github.com/kmnhan/Radia.git", subdirectory = "cpp/py" }
 srwpy = { git = "https://github.com/kmnhan/SRW.git", subdirectory = "env/python" }
+jupyter-rs-vtk = { git = "https://github.com/kmnhan/jupyter_rs_vtk.git" }
+jupyter-rs-radia = { git = "https://github.com/kmnhan/jupyter_rs_radia.git" }
