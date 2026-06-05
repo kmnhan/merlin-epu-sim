@@ -1,13 +1,17 @@
 """Extract field values from the RADIA model and translate to SRW."""
 
-from array import array
 import pathlib
+from array import array
 
 import numpy as np
 from srwpy.srwlib import SRWLMagFld3D, SRWLMagFldC, srwl_uti_read_mag_fld_3d
 
 from correction import correct_one_field_component
-from model import build_merlin
+from model import (
+    MERLIN_DEFAULT_QP_SHORT_BLOCKS,
+    build_merlin,
+    normalize_qp_short_blocks,
+)
 from reference import load_merlin_hall_scan
 
 FIELD_CACHE_DIR = pathlib.Path("fields")
@@ -89,6 +93,7 @@ def _make_field_cache_key(
     correct_field_integral: bool,
     correction_kick_length_m: float,
     correction_kick_rms_len_mm: float,
+    qp_short_blocks=None,
 ):
     key = (
         f"gap{epu_gap_mm:.3g}_z{epu_z_mm:.3g}_{epu_mode}"
@@ -98,6 +103,17 @@ def _make_field_cache_key(
     )
     if qp_retraction != 8.0:
         key += f"_qpret{qp_retraction:.3g}"
+
+    if qp_short_blocks is not None:
+        normalized_qp_short_blocks = normalize_qp_short_blocks(qp_short_blocks)
+        if normalized_qp_short_blocks != set(MERLIN_DEFAULT_QP_SHORT_BLOCKS):
+            if normalized_qp_short_blocks:
+                joined_blocks = "-".join(
+                    str(i) for i in sorted(normalized_qp_short_blocks)
+                )
+                key += f"_qpshort{joined_blocks}"
+            else:
+                key += "_qpshortnone"
 
     if correct_field_integral:
         key += (
@@ -122,12 +138,17 @@ def make_field(
     correction_kick_length_m: float = 1.8925,
     correction_kick_rms_len_mm: float = 100.0,
     write_cache: bool = True,
+    qp_short_blocks=None,
 ) -> SRWLMagFldC:
+    if qp_short_blocks is not None:
+        qp_short_blocks = normalize_qp_short_blocks(qp_short_blocks)
+
     cache_key = _make_field_cache_key(
         epu_gap_mm=epu_gap,
         epu_z_mm=epu_z,
         epu_mode=epu_mode,
         qp_retraction=qp_retraction,
+        qp_short_blocks=qp_short_blocks,
         x_hw=x_hw,
         y_hw=y_hw,
         z_hw=z_hw,
@@ -142,7 +163,11 @@ def make_field(
     field_cache_file = (FIELD_CACHE_DIR / cache_key).resolve()
     if not field_cache_file.exists():
         rad_obj = build_merlin(
-            gap=epu_gap, z=epu_z, mode=epu_mode, qp_retraction=qp_retraction
+            gap=epu_gap,
+            z=epu_z,
+            mode=epu_mode,
+            qp_retraction=qp_retraction,
+            qp_short_blocks=qp_short_blocks,
         )
         x_grid = np.linspace(-x_hw, x_hw, nx)
         y_grid = np.linspace(-y_hw, y_hw, ny)
@@ -201,6 +226,7 @@ def make_field(
                 correction_kick_length_m=correction_kick_length_m,
                 correction_kick_rms_len_mm=correction_kick_rms_len_mm,
                 write_cache=write_cache,
+                qp_short_blocks=qp_short_blocks,
             )
         print(f"Loaded field from cache: {field_cache_file}")
 

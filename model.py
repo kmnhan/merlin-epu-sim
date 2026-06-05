@@ -1,6 +1,7 @@
 """Models the QP-EPU90 at MERLIN."""
 
 import copy
+import operator
 
 import radia as rad
 
@@ -64,6 +65,8 @@ MERLIN_MAGNET_TYPE_TO_ARROW = {  # Magnetization directions in the local row coo
     "B2": "right",  # Standard B2 body magnet points in +y.
     "QA1": "down",  # Quasi A1 body magnet follows A1 magnetization.
     "QA2": "up",  # Quasi A2 body magnet follows A2 magnetization.
+    "QB1": "left",  # Quasi B1 body magnet follows B1 magnetization.
+    "QB2": "right",  # Quasi B2 body magnet follows B2 magnetization.
 }
 
 # Display colors for standard, quasi-periodic, and E-end block labels.
@@ -74,31 +77,18 @@ MERLIN_MAGNET_COLORS = {  # Colors only affect the Radia viewer, not the field c
     "B2": [0.85, 0.85, 0.25],  # Standard B2 block color.
     "QA1": [0.95, 0.25, 0.20],  # QP replacement for an A1-family vertical block.
     "QA2": [0.95, 0.45, 0.20],  # QP replacement for an A2-family vertical block.
+    "QB1": [0.10, 0.95, 0.50],  # QP replacement for a B1-family longitudinal block.
+    "QB2": [0.95, 0.70, 0.20],  # QP replacement for a B2-family longitudinal block.
     "E0": [0.45, 0.45, 0.45],  # E0 end magnet color.
     "E1": [0.55, 0.55, 0.55],  # E1 end magnet color.
     "E2": [0.65, 0.65, 0.65],  # E2 end magnet color.
     "E3": [0.75, 0.75, 0.75],  # E3 end magnet color.
 }
 
-# DCC drawing block numbers from 26E013A (Q1-Q2) and 26E018A (Q3-Q4).
-MERLIN_QP_DCC_BLOCKS = {  # Body-block numbers replaced by shorter vertical QP magnets.
-    "Q1": {  # Q1 uses the Q1-Q2 drawing QA assignment.
-        "QA1": {13, 25, 33, 45, 65, 77},  # Q1 QA1 DCC block numbers.
-        "QA2": {7, 19, 39, 51, 59, 71},  # Q1 QA2 DCC block numbers.
-    },
-    "Q2": {  # Q2 uses the Q1-Q2 drawing QA assignment.
-        "QA1": {13, 25, 33, 45, 65, 77},  # Q2 QA1 DCC block numbers.
-        "QA2": {7, 19, 39, 51, 59, 71},  # Q2 QA2 DCC block numbers.
-    },
-    "Q3": {  # Q3 swaps QA1/QA2 relative to Q1-Q2.
-        "QA1": {7, 19, 39, 51, 59, 71},  # Q3 QA1 DCC block numbers.
-        "QA2": {13, 25, 33, 45, 65, 77},  # Q3 QA2 DCC block numbers.
-    },
-    "Q4": {  # Q4 swaps QA1/QA2 relative to Q1-Q2.
-        "QA1": {7, 19, 39, 51, 59, 71},  # Q4 QA1 DCC block numbers.
-        "QA2": {13, 25, 33, 45, 65, 77},  # Q4 QA2 DCC block numbers.
-    },
-}
+# DCC drawing body-block numbers replaced by shorter quasi-periodic magnets.
+MERLIN_DEFAULT_QP_SHORT_BLOCKS = frozenset(
+    {7, 13, 19, 25, 33, 39, 45, 51, 59, 65, 71, 77}
+)
 
 # Row placement and body-label pattern.
 MERLIN_QUADRANTS = {  # Per-row placement, notch orientation, phase motion, and repeated body labels.
@@ -380,6 +370,39 @@ MERLIN_BODY_DCC_LAST = (
 )  # Last repeated DCC body-block number before the E-type end sequence.
 
 
+def normalize_qp_short_blocks(qp_short_blocks=None):
+    """Return validated DCC body-block numbers selected for QP shortening."""
+    if qp_short_blocks is None:
+        return set(MERLIN_DEFAULT_QP_SHORT_BLOCKS)
+
+    normalized = set()
+    try:
+        iterator = iter(qp_short_blocks)
+    except TypeError as exc:
+        raise TypeError(
+            "qp_short_blocks must be an iterable of integer DCC body-block indices"
+        ) from exc
+
+    for block in iterator:
+        if isinstance(block, bool):
+            raise TypeError(
+                f"qp_short_blocks entries must be integers, got {block!r}"
+            )
+        try:
+            block = operator.index(block)
+        except TypeError as exc:
+            raise TypeError(
+                f"qp_short_blocks entries must be integers, got {block!r}"
+            ) from exc
+        if not MERLIN_BODY_DCC_FIRST <= block <= MERLIN_BODY_DCC_LAST:
+            raise ValueError(
+                "qp_short_blocks entries must be DCC body-block indices "
+                f"from {MERLIN_BODY_DCC_FIRST} to {MERLIN_BODY_DCC_LAST}, got {block}"
+            )
+        normalized.add(block)
+    return normalized
+
+
 def MagnetBlock(_pc, _wc, _cx, _cz, _type, _ndiv, _m):
     # From RADIA_APPLE_II_Demo.py
 
@@ -429,29 +452,30 @@ def MagnetBlock(_pc, _wc, _cx, _cz, _type, _ndiv, _m):
     return u
 
 
-def merlin_body_table(quadrant, phase=0.0):
+def merlin_body_table(quadrant, phase=0.0, qp_short_blocks=None):
     """Return the known DCC body-magnet table for one MERLIN quadrant."""
     if quadrant not in MERLIN_QUADRANTS:
         raise ValueError(f"Unknown MERLIN quadrant: {quadrant}")
 
     cfg = MERLIN_QUADRANTS[quadrant]
+    qp_short_blocks = normalize_qp_short_blocks(qp_short_blocks)
     entries = []
 
     for dcc_block in range(MERLIN_BODY_DCC_FIRST, MERLIN_BODY_DCC_LAST + 1):
         pattern_index = (dcc_block - MERLIN_BODY_DCC_FIRST) % 4
-        block_type = cfg["body_pattern"][pattern_index]
-        for qp_label, qp_blocks in MERLIN_QP_DCC_BLOCKS[quadrant].items():
-            if dcc_block in qp_blocks:
-                block_type = qp_label
-                break
+        base_type = cfg["body_pattern"][pattern_index]
+        is_qp_short = dcc_block in qp_short_blocks
+        block_type = f"Q{base_type}" if is_qp_short else base_type
 
         entries.append(
             {
                 "dcc_block": dcc_block,
                 "drawing_block_label": str(dcc_block),
+                "base_type": base_type,
                 "type": block_type,
+                "is_qp_short": is_qp_short,
                 "ly_mm": MERLIN_STD_LY,
-                "arrow": MERLIN_MAGNET_TYPE_TO_ARROW[block_type],
+                "arrow": MERLIN_MAGNET_TYPE_TO_ARROW[base_type],
             }
         )
 
@@ -477,7 +501,7 @@ def merlin_body_table(quadrant, phase=0.0):
     return entries
 
 
-def merlin_magnet_table(quadrant, phase=0.0):
+def merlin_magnet_table(quadrant, phase=0.0, qp_short_blocks=None):
     """Return one quadrant table with known body magnets and E-end magnets."""
     if quadrant not in MERLIN_QUADRANTS:
         raise ValueError(f"Unknown MERLIN quadrant: {quadrant}")
@@ -486,7 +510,9 @@ def merlin_magnet_table(quadrant, phase=0.0):
     row_phase = phase if cfg["phase_shifted"] else 0.0
     body_entries = [
         dict(entry, gap_after_mm=MERLIN_AIR)
-        for entry in merlin_body_table(quadrant, phase=row_phase)
+        for entry in merlin_body_table(
+            quadrant, phase=row_phase, qp_short_blocks=qp_short_blocks
+        )
     ]
     entries = []
 
@@ -522,6 +548,8 @@ def merlin_magnet_table(quadrant, phase=0.0):
             entry["body_block"] = (
                 None  # E labels are end magnets, not repeated body blocks.
             )
+            entry["base_type"] = entry["type"]
+            entry["is_qp_short"] = False
             # E-end detail arrows are already split by Q1/Q2 vs Q3/Q4, so do not add the body z-mirror to longitudinal arrows.
             entry["m_unit"] = [
                 local_m_unit[0],
@@ -547,6 +575,7 @@ def MerlinMagnetArray(
     br=MERLIN_BR,
     mu=MERLIN_MU,
     ndiv=MERLIN_NDIV,
+    qp_short_blocks=None,
 ):
     """Build one MERLIN magnet row from known body magnets plus E ends."""
     if quadrant not in MERLIN_QUADRANTS:
@@ -557,11 +586,13 @@ def MerlinMagnetArray(
     px = cfg["x_sign"] * (MERLIN_STD_LX / 2.0 + gapx / 2.0)
     pz = cfg["z_sign"] * (gap / 2.0 + MERLIN_STD_LZ / 2.0)
 
-    for entry in merlin_magnet_table(quadrant, phase=phase):
+    for entry in merlin_magnet_table(
+        quadrant, phase=phase, qp_short_blocks=qp_short_blocks
+    ):
         pc = [px, entry["y_center_mm"], pz]
         wc = [MERLIN_STD_LX, entry["ly_mm"], MERLIN_STD_LZ]
 
-        if entry["type"] in ("QA1", "QA2"):
+        if entry["is_qp_short"]:
             # Handle QP blocks with a shorter vertical size and a center shift away from
             # the gap for a flush outer face.
             qp_lz = MERLIN_STD_LZ - qp_retraction
@@ -586,12 +617,14 @@ def MERLIN_APPLE_II(
     br=MERLIN_BR,
     mu=MERLIN_MU,
     ndiv=MERLIN_NDIV,
+    qp_short_blocks=None,
 ):
     """Build the full four-row MERLIN QP-EPU magnet-only model.
 
     The input phase is the MERLIN measurement phase in millimeters: Q1 and Q3
     are shifted by this amount, Q2 and Q4 remain fixed.
     """
+    qp_short_blocks = normalize_qp_short_blocks(qp_short_blocks)
     q1 = MerlinMagnetArray(
         "Q1",
         phase=phase,
@@ -601,6 +634,7 @@ def MERLIN_APPLE_II(
         br=br,
         mu=mu,
         ndiv=ndiv,
+        qp_short_blocks=qp_short_blocks,
     )
     q2 = MerlinMagnetArray(
         "Q2",
@@ -611,6 +645,7 @@ def MERLIN_APPLE_II(
         br=br,
         mu=mu,
         ndiv=ndiv,
+        qp_short_blocks=qp_short_blocks,
     )
     q3 = MerlinMagnetArray(
         "Q3",
@@ -621,6 +656,7 @@ def MERLIN_APPLE_II(
         br=br,
         mu=mu,
         ndiv=ndiv,
+        qp_short_blocks=qp_short_blocks,
     )
     q4 = MerlinMagnetArray(
         "Q4",
@@ -631,18 +667,29 @@ def MERLIN_APPLE_II(
         br=br,
         mu=mu,
         ndiv=ndiv,
+        qp_short_blocks=qp_short_blocks,
     )
     rows = {"Q1": q1, "Q2": q2, "Q3": q3, "Q4": q4}
     return rad.ObjCnt([q1, q2, q3, q4]), rows
 
 
 def build_merlin(
-    gap=15.0, z=0.0, mode="parallel", qp_retraction=8.0, relax: bool = False
+    gap=15.0,
+    z=0.0,
+    mode="parallel",
+    qp_retraction=8.0,
+    relax: bool = False,
+    qp_short_blocks=None,
 ):
     """Build the full MERLIN magnet-only model with the specified gap and z."""
     if mode == "parallel":
         rad.UtiDelAll()
-        merlin, _ = MERLIN_APPLE_II(phase=z, gap=gap, qp_retraction=qp_retraction)
+        merlin, _ = MERLIN_APPLE_II(
+            phase=z,
+            gap=gap,
+            qp_retraction=qp_retraction,
+            qp_short_blocks=qp_short_blocks,
+        )
     else:
         # TODO: implement antiparallel movement
         raise NotImplementedError()
