@@ -1,6 +1,5 @@
 """Models the QP-EPU90 at MERLIN."""
 
-import copy
 import operator
 
 import radia as rad
@@ -17,28 +16,21 @@ MERLIN_STD_LX = 25.0  # Standard block horizontal size.
 MERLIN_STD_LY = 22.35  # Standard block longitudinal size.
 MERLIN_STD_LZ = 50.0  # Standard block vertical size.
 
-MERLIN_CX = 3.0  # Horizontal notch/step size used by MagnetBlock.
-MERLIN_CZ = 5.0  # Vertical notch/step size used by MagnetBlock.
+MERLIN_CX = 3.0  # Horizontal size of the lower notch/step used by MagnetBlock.
+MERLIN_CZ = 5.0  # Vertical size of the lower notch/step used by MagnetBlock.
+MERLIN_TOP_CX = 5.5  # Horizontal size of the upper notch/step used by MagnetBlock.
+MERLIN_TOP_CZ = 3.0  # Vertical size of the upper notch/step used by MagnetBlock.
+MERLIN_TOP_SLOT_CAP_LZ = 8.0  # Full-height material above regular/end upper slots.
 MERLIN_AIR = (
     MERLIN_PERIOD / 4.0 - MERLIN_STD_LY
 )  # Longitudinal air space implied by period/4 minus block length.
-# End pieces use vector-estimated magnetic widths while preserving the DCC 17.55/30.05 mm assembly spans.
-MERLIN_END_SHORT_SPAN_LY = 17.55  # DCC table longitudinal span for the outer holder plus the two adjacent tip magnets.
-MERLIN_END_EDGE_HOLDER_LY = 6.45  # Non-magnetic magic-finger holder span at the outside edge, omitted from the Radia model.
-MERLIN_END_EDGE_INNER_LY = (
-    6.28  # Vector-estimated longitudinal size of the inner narrow tip magnet.
-)
-MERLIN_END_EDGE_OUTER_LY = (
-    MERLIN_END_SHORT_SPAN_LY - MERLIN_END_EDGE_HOLDER_LY - MERLIN_END_EDGE_INNER_LY
-)  # Magnetic width of the outer narrow tip magnet.
+MERLIN_END_EDGE_OUTER_LY = 6.30  # Magnetic width of the outer narrow tip magnet.
+MERLIN_END_EDGE_INNER_LY = 10.95  # Longitudinal size of the inner narrow tip magnet.
 
-# DCC long E span containing the internal gap plus the inner end magnet.
-MERLIN_END_LONG_SPAN_LY = 30.05
-# Vector-estimated non-magnetic gap inside the long E span before the inner end magnet.
-MERLIN_END_LONG_SPAN_GAP = 11.21
-MERLIN_END_INNER_LY = (
-    MERLIN_END_LONG_SPAN_LY - MERLIN_END_LONG_SPAN_GAP
-)  # Magnetic length of the inner end magnet.
+# Long E span containing the internal gap plus the inner end magnet.
+MERLIN_END_LONG_SPAN_GAP = 13.0
+MERLIN_END_INNER_LY = 17.45  # Magnetic length of the inner end magnet.
+MERLIN_END_LONG_SPAN_LY = MERLIN_END_LONG_SPAN_GAP + MERLIN_END_INNER_LY
 
 # Material constants and Radia subdivision parameters.
 # These are just taken from the generic APPLE-II example and have not been optimized.
@@ -95,7 +87,7 @@ MERLIN_QUADRANTS = {  # Per-row placement, notch orientation, phase motion, and 
     "Q1": {  # Upper, +x row.
         "x_sign": 1.0,  # Row center is on the +x side of the horizontal gap.
         "z_sign": 1.0,  # Row center is on the +z side of the vertical gap.
-        "shape_type": 1,  # MagnetBlock notch orientation type for this row.
+        "shape_type": 2,  # MagnetBlock notch orientation type for this row.
         "phase_shifted": True,  # Q1 moves by the requested MERLIN phase.
         "body_pattern": (
             "B2",
@@ -107,7 +99,7 @@ MERLIN_QUADRANTS = {  # Per-row placement, notch orientation, phase motion, and 
     "Q2": {  # Upper, -x row.
         "x_sign": -1.0,  # Row center is on the -x side of the horizontal gap.
         "z_sign": 1.0,  # Row center is on the +z side of the vertical gap.
-        "shape_type": 2,  # MagnetBlock notch orientation type for this row.
+        "shape_type": 1,  # MagnetBlock notch orientation type for this row.
         "phase_shifted": False,  # Q2 remains fixed when Q1/Q3 are phased.
         "body_pattern": (
             "B1",
@@ -151,7 +143,7 @@ MERLIN_DCC_END_BLOCKS = {  # Upstream/downstream end pieces.
                 "drawing_block_label": "2a",
                 "type": "E3",
                 "ly_mm": MERLIN_END_EDGE_OUTER_LY,
-                "gap_after_mm": MERLIN_AIR,
+                "gap_after_mm": 0.0,
                 "arrow": "down",
             },  # Outer narrow tip magnet.
             {
@@ -185,7 +177,7 @@ MERLIN_DCC_END_BLOCKS = {  # Upstream/downstream end pieces.
                 "drawing_block_label": "85b",
                 "type": "E0",
                 "ly_mm": MERLIN_END_EDGE_INNER_LY,
-                "gap_after_mm": MERLIN_AIR,
+                "gap_after_mm": 0.0,
                 "arrow": "right",
             },  # Inner narrow end marker.
             {
@@ -205,7 +197,7 @@ MERLIN_DCC_END_BLOCKS = {  # Upstream/downstream end pieces.
                 "drawing_block_label": "1a",
                 "type": "E0",
                 "ly_mm": MERLIN_END_EDGE_OUTER_LY,
-                "gap_after_mm": MERLIN_AIR,
+                "gap_after_mm": 0.0,
                 "arrow": "down",
             },  # Outer narrow tip magnet.
             {
@@ -239,7 +231,7 @@ MERLIN_DCC_END_BLOCKS = {  # Upstream/downstream end pieces.
                 "drawing_block_label": "84b",
                 "type": "E3",
                 "ly_mm": MERLIN_END_EDGE_INNER_LY,
-                "gap_after_mm": MERLIN_AIR,
+                "gap_after_mm": 0.0,
                 "arrow": "right",
             },  # Inner narrow end marker.
             {
@@ -259,7 +251,7 @@ MERLIN_DCC_END_BLOCKS = {  # Upstream/downstream end pieces.
                 "drawing_block_label": "2a",
                 "type": "E1",
                 "ly_mm": MERLIN_END_EDGE_OUTER_LY,
-                "gap_after_mm": MERLIN_AIR,
+                "gap_after_mm": 0.0,
                 "arrow": "up",
             },  # Outer narrow tip magnet.
             {
@@ -293,7 +285,7 @@ MERLIN_DCC_END_BLOCKS = {  # Upstream/downstream end pieces.
                 "drawing_block_label": "85b",
                 "type": "E2",
                 "ly_mm": MERLIN_END_EDGE_INNER_LY,
-                "gap_after_mm": MERLIN_AIR,
+                "gap_after_mm": 0.0,
                 "arrow": "left",
             },  # Inner narrow end marker.
             {
@@ -313,7 +305,7 @@ MERLIN_DCC_END_BLOCKS = {  # Upstream/downstream end pieces.
                 "drawing_block_label": "1a",
                 "type": "E2",
                 "ly_mm": MERLIN_END_EDGE_OUTER_LY,
-                "gap_after_mm": MERLIN_AIR,
+                "gap_after_mm": 0.0,
                 "arrow": "up",
             },  # Outer narrow tip magnet.
             {
@@ -347,7 +339,7 @@ MERLIN_DCC_END_BLOCKS = {  # Upstream/downstream end pieces.
                 "drawing_block_label": "84b",
                 "type": "E1",
                 "ly_mm": MERLIN_END_EDGE_INNER_LY,
-                "gap_after_mm": MERLIN_AIR,
+                "gap_after_mm": 0.0,
                 "arrow": "left",
             },  # Inner narrow end marker.
             {
@@ -385,9 +377,7 @@ def normalize_qp_short_blocks(qp_short_blocks=None):
 
     for block in iterator:
         if isinstance(block, bool):
-            raise TypeError(
-                f"qp_short_blocks entries must be integers, got {block!r}"
-            )
+            raise TypeError(f"qp_short_blocks entries must be integers, got {block!r}")
         try:
             block = operator.index(block)
         except TypeError as exc:
@@ -403,40 +393,116 @@ def normalize_qp_short_blocks(qp_short_blocks=None):
     return normalized
 
 
-def MagnetBlock(_pc, _wc, _cx, _cz, _type, _ndiv, _m):
+def MagnetBlock(
+    _pc,
+    _wc,
+    _cx,
+    _cz,
+    _type,
+    _ndiv,
+    _m,
+    _top_cx=None,
+    _top_cz=None,
+    _top_slot_cap_lz=None,
+    _mirror_z=False,
+):
     # From RADIA_APPLE_II_Demo.py
 
     u = rad.ObjCnt([])
 
+    top_cx = _cx if _top_cx is None else _top_cx
+    top_cz = _cz if _top_cz is None else _top_cz
+    top_z_sign = -1.0 if _mirror_z else 1.0
+    lower_z_sign = -top_z_sign
     wwc = _wc
     if _type != 0:
-        wwc = copy.copy(_wc)
-        wwc[0] -= 2 * _cx
+        left_cx = top_cx if _type == 1 else _cx
+        right_cx = top_cx if _type == 2 else _cx
+        ppc = [
+            _pc[0] + (left_cx - right_cx) / 2.0,
+            _pc[1],
+            _pc[2],
+        ]
+        wwc = [_wc[0] - left_cx - right_cx, _wc[1], _wc[2]]
+    else:
+        ppc = _pc
 
-    b1 = rad.ObjRecMag(_pc, wwc, _m)
+    b1 = rad.ObjRecMag(ppc, wwc, _m)
     rad.ObjAddToCnt(u, [b1])
     # ndiv2 = [1,_ndiv[1],_ndiv[2]]
 
     if (_cx > 0.01) and (_cz > 0.01):
         if _type == 1:
-            ppc = [_pc[0] - _wc[0] / 2 + _cx / 2, _pc[1], _pc[2] - _cz / 2]
-            wwc = [_cx, _wc[1], _wc[2] - _cz]
-            b2 = rad.ObjRecMag(ppc, wwc, _m)
+            b2 = []
+            if _top_slot_cap_lz is None:
+                ppc = [
+                    _pc[0] - _wc[0] / 2 + top_cx / 2,
+                    _pc[1],
+                    _pc[2] - top_z_sign * top_cz / 2,
+                ]
+                wwc = [top_cx, _wc[1], _wc[2] - top_cz]
+                b2.append(rad.ObjRecMag(ppc, wwc, _m))
+            else:
+                lower_lz = _wc[2] - _top_slot_cap_lz - top_cz
+                ppc = [
+                    _pc[0] - _wc[0] / 2 + top_cx / 2,
+                    _pc[1],
+                    _pc[2] - top_z_sign * (_top_slot_cap_lz + top_cz) / 2,
+                ]
+                wwc = [top_cx, _wc[1], lower_lz]
+                b2.append(rad.ObjRecMag(ppc, wwc, _m))
+                ppc = [
+                    _pc[0] - _wc[0] / 2 + top_cx / 2,
+                    _pc[1],
+                    _pc[2] + top_z_sign * (_wc[2] - _top_slot_cap_lz) / 2,
+                ]
+                wwc = [top_cx, _wc[1], _top_slot_cap_lz]
+                b2.append(rad.ObjRecMag(ppc, wwc, _m))
 
-            ppc = [_pc[0] + _wc[0] / 2 - _cx / 2, _pc[1], _pc[2] + _cz / 2]
+            ppc = [
+                _pc[0] + _wc[0] / 2 - _cx / 2,
+                _pc[1],
+                _pc[2] - lower_z_sign * _cz / 2,
+            ]
             wwc = [_cx, _wc[1], _wc[2] - _cz]
             b3 = rad.ObjRecMag(ppc, wwc, _m)
-            rad.ObjAddToCnt(u, [b2, b3])
+            rad.ObjAddToCnt(u, [*b2, b3])
 
         elif _type == 2:
-            ppc = [_pc[0] - _wc[0] / 2 + _cx / 2, _pc[1], _pc[2] + _cz / 2]
+            ppc = [
+                _pc[0] - _wc[0] / 2 + _cx / 2,
+                _pc[1],
+                _pc[2] - lower_z_sign * _cz / 2,
+            ]
             wwc = [_cx, _wc[1], _wc[2] - _cz]
             b2 = rad.ObjRecMag(ppc, wwc, _m)
 
-            ppc = [_pc[0] + _wc[0] / 2 - _cx / 2, _pc[1], _pc[2] - _cz / 2]
-            wwc = [_cx, _wc[1], _wc[2] - _cz]
-            b3 = rad.ObjRecMag(ppc, wwc, _m)
-            rad.ObjAddToCnt(u, [b2, b3])
+            b3 = []
+            if _top_slot_cap_lz is None:
+                ppc = [
+                    _pc[0] + _wc[0] / 2 - top_cx / 2,
+                    _pc[1],
+                    _pc[2] - top_z_sign * top_cz / 2,
+                ]
+                wwc = [top_cx, _wc[1], _wc[2] - top_cz]
+                b3.append(rad.ObjRecMag(ppc, wwc, _m))
+            else:
+                lower_lz = _wc[2] - _top_slot_cap_lz - top_cz
+                ppc = [
+                    _pc[0] + _wc[0] / 2 - top_cx / 2,
+                    _pc[1],
+                    _pc[2] - top_z_sign * (_top_slot_cap_lz + top_cz) / 2,
+                ]
+                wwc = [top_cx, _wc[1], lower_lz]
+                b3.append(rad.ObjRecMag(ppc, wwc, _m))
+                ppc = [
+                    _pc[0] + _wc[0] / 2 - top_cx / 2,
+                    _pc[1],
+                    _pc[2] + top_z_sign * (_wc[2] - _top_slot_cap_lz) / 2,
+                ]
+                wwc = [top_cx, _wc[1], _top_slot_cap_lz]
+                b3.append(rad.ObjRecMag(ppc, wwc, _m))
+            rad.ObjAddToCnt(u, [b2, *b3])
 
         elif _type == 3:
             ppc = [_pc[0] - _wc[0] / 2 + _cx / 2, _pc[1], _pc[2]]
@@ -593,14 +659,25 @@ def MerlinMagnetArray(
         wc = [MERLIN_STD_LX, entry["ly_mm"], MERLIN_STD_LZ]
 
         if entry["is_qp_short"]:
-            # Handle QP blocks with a shorter vertical size and a center shift away from
-            # the gap for a flush outer face.
+            # Shorten QP blocks on the gap side while preserving the outer face.
             qp_lz = MERLIN_STD_LZ - qp_retraction
             wc[2] = qp_lz
-            pc[2] += cfg["z_sign"] * qp_retraction
+            pc[2] += cfg["z_sign"] * qp_retraction / 2.0
 
         m = [br * component for component in entry["m_unit"]]
-        block = MagnetBlock(pc, wc, MERLIN_CX, MERLIN_CZ, cfg["shape_type"], ndiv, m)
+        block = MagnetBlock(
+            pc,
+            wc,
+            MERLIN_CX,
+            MERLIN_CZ,
+            cfg["shape_type"],
+            ndiv,
+            m,
+            MERLIN_TOP_CX,
+            MERLIN_TOP_CZ,
+            None if entry["is_qp_short"] else MERLIN_TOP_SLOT_CAP_LZ,
+            cfg["z_sign"] > 0,
+        )
         rad.ObjDrwAtr(block, MERLIN_MAGNET_COLORS[entry["type"]], 0.0001)
         rad.ObjAddToCnt(row, [block])
 

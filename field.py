@@ -34,13 +34,12 @@ def _sample_field(
     Z_s, Y_s, X_s = np.meshgrid(z_grid, y_grid, x_grid, indexing="ij")
 
     # Convert SRW coordinates [m] to RADIA coordinates [mm]. Normally, we would just add
-    # a - sign to Y(the Z in SRW), but the model is flipped in both longitudinal and
-    # vertical directions, so we flip the Z instead.
+    # a - sign to Y (the Z in SRW), but our model happens to be flipped in X.
     points_radia_mm = np.column_stack(
         [
-            1e3 * X_s.ravel(order="C"),
-            -1e3 * Z_s.ravel(order="C"),
-            1e3 * Y_s.ravel(order="C"),
+            -1e3 * X_s.ravel(order="C"),
+            1e3 * Z_s.ravel(order="C"),
+            -1e3 * Y_s.ravel(order="C"),
         ]
     )
 
@@ -51,9 +50,9 @@ def _sample_field(
         raise ValueError(f"Unexpected RADIA field shape: {b_radia.shape}")
 
     # Convert RADIA field components to SRW field components.
-    bx_srw = b_radia[:, 0]
-    by_srw = b_radia[:, 2]
-    bz_srw = -b_radia[:, 1]
+    bx_srw = -b_radia[:, 0]
+    by_srw = -b_radia[:, 2]
+    bz_srw = b_radia[:, 1]
 
     if correct_field_integral:
         bx_srw, _ = correct_one_field_component(
