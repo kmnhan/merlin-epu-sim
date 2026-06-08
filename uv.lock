@@ -205,12 +205,38 @@ wheels = [
 ]
 
 [[package]]
+name = "cmasher"
+version = "1.9.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "colorspacious" },
+    { name = "matplotlib" },
+    { name = "numpy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/2f/ca/39152b506133881be74bd46cced27ec10d9bbc85db5bdfc22c8f8e4011f9/cmasher-1.9.2.tar.gz", hash = "sha256:6c90c2cec87146e3210d3e7f2321fceee38ac7d87c136cd0de25160a14f57ff5", size = 520860, upload-time = "2024-11-19T11:17:02.084Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/91/d2/6fcb93a60777fef7662d84ba60846d2dee9b6b70b4a62472515110f79cee/cmasher-1.9.2-py3-none-any.whl", hash = "sha256:2fe45fde06051050dda5c023a527ba9066ca21f161c793f22839a6ebe6e4bbbb", size = 506496, upload-time = "2024-11-19T11:16:58.549Z" },
+]
+
+[[package]]
 name = "colorama"
 version = "0.4.6"
 source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/d8/53/6f443c9a4a8358a93a6792e2acffb9d9d5cb0a5cfd8802644b7b1c9a02e4/colorama-0.4.6.tar.gz", hash = "sha256:08695f5cb7ed6e0531a20572697297273c47b8cae5a63ffc6d6ed5c201be6e44", size = 27697, upload-time = "2022-10-25T02:36:22.414Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/d1/d6/3965ed04c63042e047cb6a3e6ed1a63a35087b6a609aa3a15ed8ac56c221/colorama-0.4.6-py2.py3-none-any.whl", hash = "sha256:4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6", size = 25335, upload-time = "2022-10-25T02:36:20.889Z" },
+]
+
+[[package]]
+name = "colorspacious"
+version = "1.1.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/75/e4/aa41ae14c5c061205715006c8834496d86ec7500f1edda5981f0f0190cc6/colorspacious-1.1.2.tar.gz", hash = "sha256:5e9072e8cdca889dac445c35c9362a22ccf758e97b00b79ff0d5a7ba3e11b618", size = 688573, upload-time = "2018-04-08T04:27:30.83Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ab/a1/318b9aeca7b9856410ededa4f52d6f82174d1a41e64bdd70d951e532675a/colorspacious-1.1.2-py2.py3-none-any.whl", hash = "sha256:c78befa603cea5dccb332464e7dd29e96469eebf6cd5133029153d1e69e3fd6f", size = 37735, upload-time = "2018-04-08T04:27:22.143Z" },
 ]
 
 [[package]]
@@ -1037,6 +1063,7 @@ name = "merlin-epu-sim"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
+    { name = "cmasher" },
     { name = "erlab" },
     { name = "ipykernel" },
     { name = "ipywidgets" },
@@ -1047,15 +1074,18 @@ dependencies = [
     { name = "mpi4py" },
     { name = "numpy" },
     { name = "pykern" },
+    { name = "pypalettes" },
     { name = "pyqt6" },
     { name = "radia" },
     { name = "scipy" },
+    { name = "seaborn" },
     { name = "srwpy" },
     { name = "xarray" },
 ]
 
 [package.metadata]
 requires-dist = [
+    { name = "cmasher", specifier = ">=1.9.2" },
     { name = "erlab", specifier = ">=3.23.2" },
     { name = "ipykernel", specifier = ">=7.1.0" },
     { name = "ipywidgets", specifier = ">=8.1.8" },
@@ -1066,9 +1096,11 @@ requires-dist = [
     { name = "mpi4py", specifier = ">=4.1.2" },
     { name = "numpy", specifier = ">=2.3.5" },
     { name = "pykern", specifier = ">=20260512.171607" },
+    { name = "pypalettes", specifier = ">=0.2.1" },
     { name = "pyqt6", specifier = ">=6.11.0" },
     { name = "radia", git = "https://github.com/kmnhan/Radia.git?subdirectory=cpp%2Fpy" },
     { name = "scipy", specifier = ">=1.17.1" },
+    { name = "seaborn", specifier = ">=0.13.2" },
     { name = "srwpy", git = "https://github.com/kmnhan/SRW.git?subdirectory=env%2Fpython" },
     { name = "xarray", specifier = ">=2026.4.0" },
 ]
@@ -1627,6 +1659,15 @@ wheels = [
 ]
 
 [[package]]
+name = "pypalettes"
+version = "0.2.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/3a/2c/14c7e4b7c61cb26a003e8c8979a24949522270668faf1e3bc6b26e7a8ca8/pypalettes-0.2.1.tar.gz", hash = "sha256:f086b8c3275cf36472216532f4a4c80ebc1a6e639ac5fff9609f94c4123e44c1", size = 14525384, upload-time = "2025-11-09T20:22:51.923Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/91/fb/3380832944eb4552b5873dd8c75095250356edfadf1156bd562da04fc793/pypalettes-0.2.1-py3-none-any.whl", hash = "sha256:5b26fc6e056212e402cf3e6338165ac16e1b19c000f882894d21f2de5bf79af0", size = 367310, upload-time = "2025-11-09T20:22:50.498Z" },
+]
+
+[[package]]
 name = "pyparsing"
 version = "3.3.2"
 source = { registry = "https://pypi.org/simple" }
@@ -1942,6 +1983,20 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/52/52/e57eceff0e342a1f50e274264ed47497b59e6a4e3118808ee58ddda7b74a/scipy-1.17.1-cp314-cp314t-musllinux_1_2_x86_64.whl", hash = "sha256:a77cbd07b940d326d39a1d1b37817e2ee4d79cb30e7338f3d0cddffae70fcaa2", size = 37682317, upload-time = "2026-02-23T00:22:18.513Z" },
     { url = "https://files.pythonhosted.org/packages/11/2f/b29eafe4a3fbc3d6de9662b36e028d5f039e72d345e05c250e121a230dd4/scipy-1.17.1-cp314-cp314t-win_amd64.whl", hash = "sha256:eb092099205ef62cd1782b006658db09e2fed75bffcae7cc0d44052d8aa0f484", size = 37345327, upload-time = "2026-02-23T00:22:24.442Z" },
     { url = "https://files.pythonhosted.org/packages/07/39/338d9219c4e87f3e708f18857ecd24d22a0c3094752393319553096b98af/scipy-1.17.1-cp314-cp314t-win_arm64.whl", hash = "sha256:200e1050faffacc162be6a486a984a0497866ec54149a01270adc8a59b7c7d21", size = 25489165, upload-time = "2026-02-23T00:22:29.563Z" },
+]
+
+[[package]]
+name = "seaborn"
+version = "0.13.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "matplotlib" },
+    { name = "numpy" },
+    { name = "pandas" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/86/59/a451d7420a77ab0b98f7affa3a1d78a313d2f7281a57afb1a34bae8ab412/seaborn-0.13.2.tar.gz", hash = "sha256:93e60a40988f4d65e9f4885df477e2fdaff6b73a9ded434c1ab356dd57eefff7", size = 1457696, upload-time = "2024-01-25T13:21:52.551Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/83/11/00d3c3dfc25ad54e731d91449895a79e4bf2384dc3ac01809010ba88f6d5/seaborn-0.13.2-py3-none-any.whl", hash = "sha256:636f8336facf092165e27924f223d3c62ca560b1f2bb5dff7ab7fad265361987", size = 294914, upload-time = "2024-01-25T13:21:49.598Z" },
 ]
 
 [[package]]

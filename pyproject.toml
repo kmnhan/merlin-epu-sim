@@ -6,6 +6,7 @@ authors = [{ name = "Kimoon Higashihira Han", email = "khan@kaist.ac.kr" }]
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
+    "cmasher>=1.9.2",
     "erlab>=3.23.2",
     "ipykernel>=7.1.0",
     "ipywidgets>=8.1.8",
@@ -16,9 +17,11 @@ dependencies = [
     "mpi4py>=4.1.2",
     "numpy>=2.3.5",
     "pykern>=20260512.171607",
+    "pypalettes>=0.2.1",
     "pyqt6>=6.11.0",
     "radia",
     "scipy>=1.17.1",
+    "seaborn>=0.13.2",
     "srwpy",
     "xarray>=2026.4.0",
 ]

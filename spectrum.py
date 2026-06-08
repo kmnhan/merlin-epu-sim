@@ -161,6 +161,7 @@ def calculate_spectrum_multi_mpi(
     if info_path.is_file():
         with info_path.open("r") as f:
             data = data.assign_attrs(**json.load(f))
+    data = data.squeeze()
     data.to_netcdf(xarray_path, engine="h5netcdf", invalid_netcdf=True)
     return data
 

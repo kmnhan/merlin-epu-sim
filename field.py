@@ -2,7 +2,7 @@
 
 import pathlib
 from array import array
-
+import scipy
 import numpy as np
 from srwpy.srwlib import SRWLMagFld3D, SRWLMagFldC, srwl_uti_read_mag_fld_3d
 
@@ -73,7 +73,7 @@ def _sample_field(
     arBx = array("d", bx_srw)
     arBy = array("d", by_srw)
     arBz = array("d", bz_srw)
-    print(f"Sampled {len(arBx):,} field points")
+    # print(f"Sampled {len(arBx):,} field points")
 
     return arBx, arBy, arBz
 
@@ -158,7 +158,7 @@ def make_field(
         correction_kick_length_m=correction_kick_length_m,
         correction_kick_rms_len_mm=correction_kick_rms_len_mm,
     )
-    print(f"Field cache key: {cache_key}")
+    # print(f"Field cache key: {cache_key}")
     field_cache_file = (FIELD_CACHE_DIR / cache_key).resolve()
     if not field_cache_file.exists():
         rad_obj = build_merlin(
@@ -201,14 +201,14 @@ def make_field(
             array("d", [y_center]),
             array("d", [z_center]),
         )
-        print("SRW magnetic field object created")
-        print(f"grid: nx={nx}, ny={ny}, nz={nz}")
-        print(f"ranges [m]: rx={rx:g}, ry={ry:g}, rz={rz:g}")
+        # print("SRW magnetic field object created")
+        # print(f"grid: nx={nx}, ny={ny}, nz={nz}")
+        # print(f"ranges [m]: rx={rx:g}, ry={ry:g}, rz={rz:g}")
     else:
         try:
             mag_cnt = srwl_uti_read_mag_fld_3d(str(field_cache_file))
         except Exception:
-            print(f"Failed to load field cache from {field_cache_file}, recomputing")
+            # print(f"Failed to load field cache from {field_cache_file}, recomputing")
             field_cache_file.unlink()
             return make_field(
                 epu_gap=epu_gap,
@@ -227,7 +227,7 @@ def make_field(
                 write_cache=write_cache,
                 qp_short_blocks=qp_short_blocks,
             )
-        print(f"Loaded field from cache: {field_cache_file}")
+        # print(f"Loaded field from cache: {field_cache_file}")
 
     return mag_cnt
 
@@ -273,3 +273,12 @@ def make_field_from_file(
         array("d", [0.0]),
         array("d", [0.0]),
     )
+
+
+def get_qp_reduction(field_container: SRWLMagFldC, threshold=1.0) -> float:
+    fld = field_container.arMagFld[0]
+    _, res = scipy.signal.find_peaks(fld.arBy, height=0.5)
+    heights = res["peak_heights"]
+    amp_p = heights[heights > threshold].mean()
+    amp_qp = heights[heights <= threshold].mean()
+    return float(1 - (amp_qp / amp_p))

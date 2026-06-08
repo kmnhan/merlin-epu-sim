@@ -762,7 +762,7 @@ def build_merlin(
     if mode == "parallel":
         rad.UtiDelAll()
         merlin, _ = MERLIN_APPLE_II(
-            phase=z,
+            phase=-z,
             gap=gap,
             qp_retraction=qp_retraction,
             qp_short_blocks=qp_short_blocks,
