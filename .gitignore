@@ -225,6 +225,8 @@ fields/
 
 # Simulated results
 simulated/
+*.h5
+*_info.json
 
 # SRW
 __srwl_logs__/

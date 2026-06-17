@@ -24,6 +24,7 @@ from srwpy.srwlib import (
     srwl,
     srwl_wfr_emit_prop_multi_e,
 )
+from beam import get_beam_params
 
 
 DEFAULT_PROPAGATION_PARAMS = [
@@ -149,7 +150,9 @@ def build_vlspgm_opt_bl(
     if dispersion_plane not in {"vertical", "horizontal"}:
         raise ValueError("dispersion_plane must be 'vertical' or 'horizontal'.")
 
-    pp = DEFAULT_PROPAGATION_PARAMS if propagation_params is None else propagation_params
+    pp = (
+        DEFAULT_PROPAGATION_PARAMS if propagation_params is None else propagation_params
+    )
     align_energy_eV = order * set_energy_eV
     ang_roll = 0.0 if dispersion_plane == "vertical" else 0.5 * np.pi
 
@@ -174,13 +177,9 @@ def build_vlspgm_opt_bl(
     elements = [grating, SRWLOptD(r_prime_m)]
     if exit_slit_width_m is not None:
         if dispersion_plane == "vertical":
-            slit = SRWLOptA(
-                "r", "a", _Dx=non_disp_slit_size_m, _Dy=exit_slit_width_m
-            )
+            slit = SRWLOptA("r", "a", _Dx=non_disp_slit_size_m, _Dy=exit_slit_width_m)
         else:
-            slit = SRWLOptA(
-                "r", "a", _Dx=exit_slit_width_m, _Dy=non_disp_slit_size_m
-            )
+            slit = SRWLOptA("r", "a", _Dx=exit_slit_width_m, _Dy=non_disp_slit_size_m)
         elements.append(slit)
 
     return SRWLOptC(elements, [list(pp) for _ in range(len(elements) + 1)])
@@ -372,8 +371,7 @@ def calculate_spectrum_single(
     ny: int = 1,
     x_range_m: float = 0.01,  # Total horizontal range at the observation plane in meters
     y_range_m: float = 0.01,  # Total vertical range at the observation plane in meters
-    iavg=0.5,  # Ring current
-    e=1.9,  # Electron energy in GeV
+    beam: str = "ALS",
 ):
     """Calculate a single-electron trajectory through the given field."""
 
@@ -384,6 +382,7 @@ def calculate_spectrum_single(
         z0_m = -z_hw
 
     # Setup single-electron beam
+    iavg, e, _, _, _, _, _ = get_beam_params(beam)
     elec_beam = SRWLPartBeam()
     elec_beam.Iavg = iavg
 
@@ -459,13 +458,7 @@ def calculate_spectrum_multi(
     nx: int = 101,
     ny: int = 101,
     n_electrons: int = 100,
-    iavg=0.5,  # Ring current
-    e=1.9,  # Electron energy in GeV
-    sig_e=0.0,  # RMS energy spread
-    sig_x=0.31e-3,  # Horizontal RMS size in m
-    sig_x_pr=0.023e-3,  # Horizontal RMS divergence in rad
-    sig_y=0.023e-3,  # Vertical RMS size in m
-    sig_y_pr=0.0065e-3,  # Vertical RMS divergence in rad
+    beam: str = "ALS",
     use_mpi: bool = False,  # Whether to use MPI for parallelization.
     only_flux: bool = False,  # Use SRW _char=10 instead of four Stokes components.
     opt_bl=None,  # Optional SRWLOptC beamline for propagation.
@@ -487,6 +480,7 @@ def calculate_spectrum_multi(
 
     elec_beam_me = SRWLPartBeam()
 
+    iavg, e, sig_e, sig_x, sig_x_pr, sig_y, sig_y_pr = get_beam_params(beam)
     elec_beam_me.from_RMS(
         _Iavg=iavg,  # Average current [A]
         _e=e,  # Electron energy [GeV]
